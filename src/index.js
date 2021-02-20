@@ -4,9 +4,11 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+const serverURI = process.env.REACT_APP_SERVER_URI;
+
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <App serverURI={serverURI}/>
   </React.StrictMode>,
   document.getElementById('root')
 );
