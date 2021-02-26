@@ -1,4 +1,4 @@
-import {Fragment, useEffect, useRef, useState} from "react";
+import React, {Fragment, useEffect, useRef} from "react";
 import io from "socket.io-client";
 
 function App({serverURI}) {
@@ -14,7 +14,7 @@ function App({serverURI}) {
       userVideo.current.srcObject = stream;
       userStream.current = stream;
 
-      socketRef.current = io.connect("http://localhost:8000/");
+      socketRef.current = io.connect(process.env.REACT_APP_SERVER_URI);
       socketRef.current = io.connect(serverURI);
       socketRef.current.emit("join room", roomId);
 
@@ -29,15 +29,19 @@ function App({serverURI}) {
       socketRef.current.on("answer", handleAnswer);
       socketRef.current.on("ice-candidate", handleNewICECandidateMsg);
     });
+
     window.onbeforeunload = hangout;
+
     return () => {
       hangout();
     };
   }, []);
+
   function callUser(userID) {
     peerRef.current = createPeer(userID);
     userStream.current.getTracks().forEach(track => peerRef.current.addTrack(track, userStream.current));
   }
+
   function createPeer(userID) {
     const peer = new RTCPeerConnection({
       iceServers: [
@@ -71,8 +75,7 @@ function App({serverURI}) {
   }
   function handleRecieveCall(incoming) {
     peerRef.current = createPeer();
-    const desc = new RTCSessionDescription(incoming.sdp);
-    peerRef.current.setRemoteDescription(desc).then(() => {
+    peerRef.current.setRemoteDescription(incoming.sdp).then(() => {
       userStream.current.getTracks().forEach(track => peerRef.current.addTrack(track, userStream.current));
     }).then(() => {
       return peerRef.current.createAnswer();
@@ -88,9 +91,9 @@ function App({serverURI}) {
     })
   }
   function handleAnswer(message) {
-    const desc = new RTCSessionDescription(message.sdp);
-    peerRef.current.setRemoteDescription(desc).catch(e => console.log(e));
+    peerRef.current.setRemoteDescription(message.sdp).catch(e => console.log(e));
   }
+
   function handleICECandidateEvent(e) {
     if (e.candidate) {
       const payload = {
@@ -113,11 +116,26 @@ function App({serverURI}) {
     peerRef.current.close();
     socketRef.current.close();
   }
+
+  function mute() {
+    userStream.current.getAudioTracks().forEach(audio => audio.enabled = !audio.enabled);
+  }
+
+  function hide() {
+    userStream.current.getVideoTracks().forEach(x => x.enabled = !x.enabled)
+  }
+
   return (
     <Fragment>
-      <h1>Realtime communication with WebRTC</h1>
-      <video id="localVideo" autoPlay playsInline ref={userVideo} muted />
-      <video id="remoteVideo" autoPlay playsInline ref={partnerVideo}/>
+      <div>
+        <h1>Realtime communication with WebRTC</h1>
+        <video id="localVideo" autoPlay playsInline ref={userVideo} muted />
+        <video id="remoteVideo" autoPlay playsInline ref={partnerVideo}/>
+      </div>
+      <div>
+        <button onClick={mute}>Mute</button>
+        <button onClick={hide}>Show</button>
+      </div>
     </Fragment>
   )
 }
